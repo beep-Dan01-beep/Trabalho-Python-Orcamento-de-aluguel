@@ -1,0 +1,176 @@
+# main.py - Gerador de orçamento imobiliário mensal (versão funcional)
+
+def calcular_orcamento_unificado(
+    tipo_imovel,
+    quartos=1,
+    tem_garagem=False,
+    vagas_estudio=0,
+    tem_filhos=False,
+    meses=1,
+    parcelas=1,
+    imposto=0
+):
+    """
+    Retorna um dicionário com todos os valores calculados.
+    """
+    # normaliza entradas
+    tipo = (tipo_imovel or "").strip().lower()
+    if meses <= 0:
+        raise ValueError("Meses deve ser >= 1")
+    if parcelas <= 0:
+        parcelas = 1
+
+    # Valor base do contrato
+    valor_base = 2000.0
+    adicional = 0.0
+
+    # Regras de adicionais
+    if tipo == "apartamento" and quartos == 2:
+        adicional += 200.0
+    elif tipo == "casa" and quartos == 2:
+        adicional += 250.0
+    elif tipo == "estudio":
+        # Estúdio: 2 vagas = R$250, vagas extras = R$60 cada
+        if vagas_estudio >= 2:
+            adicional += 250.0
+            if vagas_estudio > 2:
+                adicional += (vagas_estudio - 2) * 60.0
+        # se vagas_estudio < 2, nenhum adicional (segundo enunciado)
+    # Garagem (para casa ou apartamento)
+    if tipo in ["casa", "apartamento"] and tem_garagem:
+        adicional += 300.0
+
+    # Valor mensal bruto (antes de desconto/imposto)
+    valor_mensal_bruto = valor_base + adicional
+
+    # Desconto fixo de 5% se NÃO tiver filhos
+    desconto_percentual = 5.0 if not tem_filhos else 0.0
+    valor_desconto = valor_mensal_bruto * (desconto_percentual / 100.0)
+
+    # Imposto aplicado sobre o valor após desconto
+    valor_imposto = (valor_mensal_bruto - valor_desconto) * (imposto / 100.0)
+
+    # Valor mensal final (após desconto e imposto)
+    valor_mensal_final = (valor_mensal_bruto - valor_desconto) + valor_imposto
+
+    # Valor total para o período (meses)
+    subtotal = valor_mensal_final * meses
+
+    # Limita parcelas a no máximo 5
+    if parcelas > 5:
+        parcelas = 5
+    valor_parcela = subtotal / parcelas
+
+    return {
+        "tipo_imovel": tipo,
+        "quartos": quartos,
+        "tem_garagem": tem_garagem,
+        "vagas_estudio": vagas_estudio,
+        "tem_filhos": tem_filhos,
+        "meses": meses,
+        "parcelas": parcelas,
+        "valor_base": valor_base,
+        "adicional": adicional,
+        "valor_mensal_bruto": valor_mensal_bruto,
+        "desconto_percentual": desconto_percentual,
+        "valor_desconto": valor_desconto,
+        "valor_imposto": valor_imposto,
+        "valor_mensal_final": valor_mensal_final,
+        "subtotal": subtotal,
+        "valor_parcela": valor_parcela,
+    }
+
+
+def entrada_dados_e_exibir():
+    print("=== ORÇAMENTO IMOBILIÁRIO MENSAL ===\n")
+
+    tipo = input("Tipo do imóvel (apartamento / casa / estudio): ").strip().lower()
+    while tipo not in ("apartamento", "casa", "estudio"):
+        tipo = input("Entrada inválida. Tipo (apartamento / casa / estudio): ").strip().lower()
+
+    try:
+        quartos = int(input("Número de quartos (1 ou 2): ").strip())
+    except ValueError:
+        quartos = 1
+    if quartos not in (1, 2):
+        quartos = 1
+
+    tem_garagem = False
+    vagas_estudio = 0
+
+    if tipo in ["casa", "apartamento"]:
+        tem_garagem = input("Deseja vaga de garagem? (s/n): ").strip().lower() == "s"
+    else:  # estudio
+        try:
+            vagas_estudio = int(input("Quantas vagas de estacionamento deseja? (0,1,2,...): ").strip())
+            if vagas_estudio < 0:
+                vagas_estudio = 0
+        except ValueError:
+            vagas_estudio = 0
+
+    tem_filhos = input("O cliente tem filhos? (s/n): ").strip().lower() == "s"
+
+    # meses
+    try:
+        meses = int(input("Quantidade de meses do contrato: ").strip())
+        if meses <= 0:
+            meses = 1
+    except ValueError:
+        meses = 1
+
+    # parcelas
+    try:
+        parcelas = int(input("Quantidade de parcelas (máx 5): ").strip())
+        if parcelas <= 0:
+            parcelas = 1
+    except ValueError:
+        parcelas = 1
+
+    # imposto %
+    try:
+        imposto = float(input("Imposto (%): ").strip())
+        if imposto < 0:
+            imposto = 0.0
+    except ValueError:
+        imposto = 0.0
+
+    # chama a função de cálculo
+    orc = calcular_orcamento_unificado(
+        tipo_imovel=tipo,
+        quartos=quartos,
+        tem_garagem=tem_garagem,
+        vagas_estudio=vagas_estudio,
+        tem_filhos=tem_filhos,
+        meses=meses,
+        parcelas=parcelas,
+        imposto=imposto
+    )
+
+    # exibe resultado formatado
+    print("\n--- ORÇAMENTO ---")
+    print(f"Tipo de imóvel: {orc['tipo_imovel'].capitalize()}")
+    print(f"Quartos: {orc['quartos']}")
+    if orc['tipo_imovel'] in ['apartamento', 'casa']:
+        print(f"Vaga de garagem: {'Sim' if orc['tem_garagem'] else 'Não'}")
+    if orc['tipo_imovel'] == 'estudio':
+        print(f"Vagas de estacionamento: {orc['vagas_estudio']}")
+    print(f"Cliente com filhos: {'Sim' if orc['tem_filhos'] else 'Não'}")
+    print(f"Meses de contrato: {orc['meses']}")
+    print(f"Parcelas: {orc['parcelas']}")
+    print(f"\nValor base: R$ {orc['valor_base']:.2f}")
+    print(f"Adicionais: R$ {orc['adicional']:.2f}")
+    print(f"Valor mensal (bruto): R$ {orc['valor_mensal_bruto']:.2f}")
+
+    if orc['desconto_percentual'] > 0:
+        print(f"Desconto aplicado: {orc['desconto_percentual']:.0f}% (-R$ {orc['valor_desconto']:.2f})")
+    else:
+        print("Sem desconto (cliente possui filhos)")
+
+    print(f"Imposto: R$ {orc['valor_imposto']:.2f}")
+    print(f"Valor mensal final: R$ {orc['valor_mensal_final']:.2f}")
+    print(f"Valor total para {orc['meses']} meses: R$ {orc['subtotal']:.2f}")
+    print(f"Parcelamento: {orc['parcelas']}x de R$ {orc['valor_parcela']:.2f}")
+
+
+if __name__ == "__main__":
+    entrada_dados_e_exibir()
